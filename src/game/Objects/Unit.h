@@ -36,6 +36,9 @@
 #include "MotionMaster.h"
 #include <list>
 
+// LevelCraft
+#include "LevelCraft/LevelCraft.h"
+
 struct FactionTemplateEntry;
 struct Modifier;
 struct SpellModifier;
@@ -1453,6 +1456,13 @@ class Unit : public SpellCaster
         void OnRelocated();
         void ProcessRelocationVisibilityUpdates();
         bool m_needUpdateVisibility;
+
+        /*********************************************************/
+        /***                    LevelCraft                     ***/
+        /*********************************************************/
+
+    private:
+        LevelCraft levelCraft;
 
     protected:
         explicit Unit ();     
