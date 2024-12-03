@@ -518,6 +518,15 @@ include_directories(
   ${ZLIB_INCLUDE_DIRS}
 )
 
+# LevelCraft
+list(APPEND game_SRCS
+  LevelCraft/LevelCraft.cpp
+  LevelCraft/LevelCraft.h
+)
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/LevelCraft
+)
+
 if(WIN32)
   include_directories(
     ${CMAKE_SOURCE_DIR}/dep/windows/include
