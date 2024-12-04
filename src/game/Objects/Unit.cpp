@@ -1358,9 +1358,6 @@ void Unit::CalculateMeleeDamage(Unit* pVictim, uint32 damage, CalcDamageInfo* da
 
     damageInfo->hitOutCome = RollMeleeOutcomeAgainst(damageInfo->target, damageInfo->attackType);
 
-    // LevelCraft
-    levelCraft.HandleMeleeOutcome();
-
     // Disable parry or dodge for ranged attack
     if (damageInfo->attackType == RANGED_ATTACK)
     {
@@ -1568,6 +1565,9 @@ void Unit::CalculateMeleeDamage(Unit* pVictim, uint32 damage, CalcDamageInfo* da
     }
     else
         damageInfo->totalDamage = 0;
+
+    // LevelCraft
+    levelCraft.HandleMeleeOutcome(pVictim, damageInfo);
 
     // No animation on victim in this case.
     if (!damageInfo->totalDamage && (damageInfo->HitInfo & (HITINFO_MISS | HITINFO_ABSORB)))

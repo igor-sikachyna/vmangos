@@ -3,7 +3,8 @@
 #ifndef MANGOSSERVER_LEVELCRAFT_H
 #define MANGOSSERVER_LEVELCRAFT_H
 
-#include "Unit.h"
+class Unit;
+struct CalcDamageInfo;
 
 class LevelCraft
 {
@@ -15,7 +16,7 @@ public:
     virtual void SaveToDB();
     virtual bool LoadFromDB();
 
-    virtual void HandleMeleeOutcome();
+    virtual void HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo);
 
 private:
     Unit* m_unit;

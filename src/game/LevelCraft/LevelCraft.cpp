@@ -6,6 +6,12 @@
 #include "WorldPacket.h"
 #include "Chat.h"
 
+void Message(Unit* player, std::string s)
+{
+    ChatHandler chat((Player*)player);
+    chat.SendSysMessage(s.c_str());
+}
+
 LevelCraft::LevelCraft(Unit* unit) : m_unit(unit)
 {
 
@@ -26,11 +32,11 @@ bool LevelCraft::LoadFromDB()
     return true;
 }
 
-void LevelCraft::HandleMeleeOutcome()
+void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
 {
-    if (m_unit->IsPlayer())
+    // m_unit is attacking pVictim
+    if (pVictim->IsPlayer())
     {
-        ChatHandler chat((Player*)m_unit);
-        chat.SendSysMessage("Hello world");
+        Message(pVictim, "GUID: " + std::to_string(m_unit->GetGUID()));
     }
 }
