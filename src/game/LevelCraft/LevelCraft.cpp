@@ -90,19 +90,15 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
     if (creature->IsCreature())
     {
         auto cinfo = ((Creature*)creature)->GetCreatureInfo();
-        if (!cinfo)
-        {
-            cinfo = sObjectMgr.GetCreatureTemplate(creature->GetEntry());
-        }
         auto stats = ((Creature*)creature)->GetClassLevelStats();
         char buf[1024];
         if (cinfo && stats)
         {
-            sprintf(buf, "Class: %d, Health multi: %f, Base health: %d, Health: %d, Stamina: %d, Armor: %d", creature->GetClass(), cinfo->health_multiplier, stats->base_health, stats->health, stats->stamina, stats->armor);
+            sprintf(buf, "Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
         }
-        else if (stats)
+        else
         {
-            sprintf(buf, "Class: %d, Health multi: unknown, Base health: %d, Health: %d, Stamina: %d, Armor: %d", creature->GetClass(), stats->base_health, stats->health, stats->stamina, stats->armor);
+            sprintf(buf, "Entry: %d, Class: %d, Max Health: %d", creature->GetEntry(), creature->GetClass(), creature->GetMaxHealth());
         }
         Message(player, buf);
     }
