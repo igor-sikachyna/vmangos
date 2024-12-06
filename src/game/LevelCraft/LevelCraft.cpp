@@ -68,10 +68,6 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
             m_combatExperience[entry].temp_damageReceivedPctLow
         );
 
-        /*Message(pVictim, "GUID: " + std::to_string(m_unit->GetGUID()));
-        Message(pVictim, "Entry: " + std::to_string(m_unit->GetEntry()));
-        Message(pVictim, "Area: " + std::to_string(pVictim->GetAreaId()));*/
-
         damageInfo->totalDamage /= (1.0 + m_combatExperience[entry].damageReceivedPct / 100.0);
     }
     else if (m_unit->IsPlayer())
@@ -87,5 +83,27 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
         );
 
         damageInfo->totalDamage *= (1.0 + m_combatExperience[entry].damageDealtPct / 100.0);
+    }
+
+    Unit* creature = pVictim->IsPlayer() ? m_unit : pVictim;
+    Unit* player = pVictim->IsPlayer() ? pVictim : m_unit;
+    if (creature->IsCreature())
+    {
+        auto cinfo = ((Creature*)creature)->GetCreatureInfo();
+        if (!cinfo)
+        {
+            cinfo = sObjectMgr.GetCreatureTemplate(creature->GetEntry());
+        }
+        auto stats = ((Creature*)creature)->GetClassLevelStats();
+        char buf[1024];
+        if (cinfo && stats)
+        {
+            sprintf(buf, "Class: %d, Health multi: %f, Base health: %d, Health: %d, Stamina: %d, Armor: %d", creature->GetClass(), cinfo->health_multiplier, stats->base_health, stats->health, stats->stamina, stats->armor);
+        }
+        else if (stats)
+        {
+            sprintf(buf, "Class: %d, Health multi: unknown, Base health: %d, Health: %d, Stamina: %d, Armor: %d", creature->GetClass(), stats->base_health, stats->health, stats->stamina, stats->armor);
+        }
+        Message(player, buf);
     }
 }
