@@ -66,11 +66,16 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
     if (!m_unit->IsPlayer() && !pVictim->IsPlayer())
         return;
 
+    // TODO: Update the damage received by the player in the player data instead of the creature data
+    // TODO: Zone XP should be assigned to where the combat was initiated instead of the current location
+
     // m_unit is attacking pVictim
     if (pVictim->IsPlayer())
     {
         uint32 entry = m_unit->GetEntry();
-        m_unitCombatExperience[entry].damageReceived += addVariance(damageInfo->totalDamage);
+        uint64 xpToAward = addVariance(damageInfo->totalDamage);
+        m_unitCombatExperience[entry].damageReceived += xpToAward;
+        m_zoneCombatExperience[m_unit->GetZoneId()].damageReceived += xpToAward;
 
         auto stats = ((Creature*)m_unit)->GetClassLevelStats();
         damageInfo->totalDamage /= (1.0 + double(m_unitCombatExperience[entry].damageReceived) / stats->health);
@@ -78,8 +83,9 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
     else if (m_unit->IsPlayer())
     {
         uint32 entry = pVictim->GetEntry();
-
-        m_unitCombatExperience[entry].damageDealt += addVariance(damageInfo->totalDamage);
+        uint64 xpToAward = addVariance(damageInfo->totalDamage);
+        m_unitCombatExperience[entry].damageDealt += xpToAward;
+        m_zoneCombatExperience[pVictim->GetZoneId()].damageDealt += xpToAward;
 
         auto stats = ((Creature*)pVictim)->GetClassLevelStats();
         damageInfo->totalDamage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
@@ -94,11 +100,11 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
         char buf[1024];
         if (cinfo && stats)
         {
-            sprintf(buf, "Map: %d, Zone: %d, Area: %d, Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetMapId(), creature->GetZoneId(), creature->GetAreaId(), creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
+            sprintf(buf, "Zone: %d, Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
         }
         else
         {
-            sprintf(buf, "Map: %d, Zone: %d, Area: %d, Entry: %d, Class: %d, Max Health: %d", creature->GetMapId(), creature->GetZoneId(), creature->GetAreaId(), creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), creature->GetMaxHealth());
+            sprintf(buf, "Zone: %d, Entry: %d, Class: %d, Max Health: %d", creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), creature->GetMaxHealth());
         }
         Message(player, buf);
     }
