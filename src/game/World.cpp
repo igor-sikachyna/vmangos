@@ -1234,6 +1234,9 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_UINT32_CREATURE_SUMMON_LIMIT, "MaxCreatureSummonLimit", DEFAULT_CREATURE_SUMMON_LIMIT);
 
+    // Levelcraft
+    setConfig(CONFIG_FLOAT_LEVELCRAFT_COMBAT_XP_VARIANCE, "Levelcraft.CombatXpVariance", 0.1f);
+
     // Smartlog data
     sLog.InitSmartlogEntries(sConfig.GetStringDefault("Smartlog.ExtraEntries", ""));
     sLog.InitSmartlogGuids(sConfig.GetStringDefault("Smartlog.ExtraGuids", ""));

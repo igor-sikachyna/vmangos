@@ -11,12 +11,8 @@ struct CalcDamageInfo;
 struct CombatExperienceInfo
 {
     uint64 damageDealt;
-    uint64 damageDealtPct;
     uint64 damageReceived;
-    uint64 damageReceivedPct;
-
-    double temp_damageDealtPctLow;
-    double temp_damageReceivedPctLow;
+    uint64 crowdControls;
 };
 
 class LevelCraft
@@ -36,7 +32,8 @@ private:
 
     Unit* m_unit;
 
-    std::map<uint32, CombatExperienceInfo> m_combatExperience;
+    std::map<uint32, CombatExperienceInfo> m_zoneCombatExperience;
+    std::map<uint32, CombatExperienceInfo> m_unitCombatExperience;
 };
 
 #endif

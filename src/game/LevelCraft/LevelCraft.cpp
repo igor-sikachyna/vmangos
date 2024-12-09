@@ -6,6 +6,8 @@
 #include "WorldPacket.h"
 #include "Chat.h"
 
+const double XP_VARIANCE = 0.1;
+
 void Message(Unit* player, std::string s)
 {
     ChatHandler chat((Player*)player);
@@ -47,6 +49,14 @@ void LevelCraft::HandleFlatAndPercentOutcomes(uint64 in_value, uint64 in_max, ui
     }
 }
 
+template <typename T>
+T addVariance(T val)
+{
+    double rnd = double(rand()) / RAND_MAX;
+    double variance = sWorld.getConfig(CONFIG_FLOAT_LEVELCRAFT_COMBAT_XP_VARIANCE);
+    return val * (1.0 + 2.0 * (rnd - 0.5) * variance);
+}
+
 void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
 {
     // Ignore PvP
@@ -60,29 +70,19 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
     if (pVictim->IsPlayer())
     {
         uint32 entry = m_unit->GetEntry();
-        HandleFlatAndPercentOutcomes(
-            damageInfo->totalDamage,
-            pVictim->GetMaxHealth(),
-            m_combatExperience[entry].damageReceived,
-            m_combatExperience[entry].damageReceivedPct,
-            m_combatExperience[entry].temp_damageReceivedPctLow
-        );
+        m_unitCombatExperience[entry].damageReceived += addVariance(damageInfo->totalDamage);
 
-        damageInfo->totalDamage /= (1.0 + m_combatExperience[entry].damageReceivedPct / 100.0);
+        auto stats = ((Creature*)m_unit)->GetClassLevelStats();
+        damageInfo->totalDamage /= (1.0 + double(m_unitCombatExperience[entry].damageReceived) / stats->health);
     }
     else if (m_unit->IsPlayer())
     {
         uint32 entry = pVictim->GetEntry();
 
-        HandleFlatAndPercentOutcomes(
-            damageInfo->totalDamage,
-            pVictim->GetMaxHealth(),
-            m_combatExperience[entry].damageDealt,
-            m_combatExperience[entry].damageDealtPct,
-            m_combatExperience[entry].temp_damageDealtPctLow
-        );
+        m_unitCombatExperience[entry].damageDealt += addVariance(damageInfo->totalDamage);
 
-        damageInfo->totalDamage *= (1.0 + m_combatExperience[entry].damageDealtPct / 100.0);
+        auto stats = ((Creature*)pVictim)->GetClassLevelStats();
+        damageInfo->totalDamage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
     }
 
     Unit* creature = pVictim->IsPlayer() ? m_unit : pVictim;
@@ -94,11 +94,11 @@ void LevelCraft::HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo)
         char buf[1024];
         if (cinfo && stats)
         {
-            sprintf(buf, "Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
+            sprintf(buf, "Map: %d, Zone: %d, Area: %d, Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetMapId(), creature->GetZoneId(), creature->GetAreaId(), creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
         }
         else
         {
-            sprintf(buf, "Entry: %d, Class: %d, Max Health: %d", creature->GetEntry(), creature->GetClass(), creature->GetMaxHealth());
+            sprintf(buf, "Map: %d, Zone: %d, Area: %d, Entry: %d, Class: %d, Max Health: %d", creature->GetMapId(), creature->GetZoneId(), creature->GetAreaId(), creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), creature->GetMaxHealth());
         }
         Message(player, buf);
     }
