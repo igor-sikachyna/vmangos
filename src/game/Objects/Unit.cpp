@@ -1567,7 +1567,10 @@ void Unit::CalculateMeleeDamage(Unit* pVictim, uint32 damage, CalcDamageInfo* da
         damageInfo->totalDamage = 0;
 
     // LevelCraft
-    levelCraft.HandleMeleeOutcome(pVictim, damageInfo);
+    // Player is attacking a creature
+    levelCraft.HandleDamageDealt(pVictim, damageInfo);
+    // Creature is attacking a player
+    pVictim->levelCraft.HandleDamageReceived(this, damageInfo);
 
     // No animation on victim in this case.
     if (!damageInfo->totalDamage && (damageInfo->HitInfo & (HITINFO_MISS | HITINFO_ABSORB)))

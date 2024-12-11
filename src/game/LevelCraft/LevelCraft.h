@@ -25,10 +25,10 @@ public:
     void SaveToDB();
     bool LoadFromDB();
 
-    void HandleMeleeOutcome(Unit* pVictim, CalcDamageInfo* damageInfo);
+    void HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInfo);
+    void HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo);
 
 private:
-    void HandleFlatAndPercentOutcomes(uint64 in_value, uint64 in_max, uint64& out_flat, uint64& out_pct, double& out_pctLow);
 
     Unit* m_unit;
 
