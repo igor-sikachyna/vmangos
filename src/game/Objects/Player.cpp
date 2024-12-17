@@ -2631,6 +2631,9 @@ void Player::AddToWorld()
             m_items[i]->AddToWorld();
     }
     sPlayerBotMgr.OnPlayerInWorld(this);
+
+    // LevelCraft
+    levelCraft.LoadFromDB();
 }
 
 void Player::RemoveFromWorld()

@@ -807,6 +807,9 @@ void WorldSession::LogoutPlayer(bool Save)
         m_movementPacketCompressor.ClearBuffer();
 #endif
 
+        // LevelCraft
+        _player->levelCraft.SaveToDB();
+
         SetPlayer(nullptr);                                    // deleted in Remove/DeleteFromWorld call
 
         // Send the 'logout complete' packet to the client

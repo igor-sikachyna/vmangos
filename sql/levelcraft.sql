@@ -21,15 +21,21 @@ USE `characters`;
 
 -- Dumping structure for table characters.levelcraft_unit_experience
 CREATE TABLE IF NOT EXISTS `levelcraft_unit_experience` (
-  `guid` int(11) unsigned NOT NULL,
-  `unit` int(11) unsigned DEFAULT NULL,
-  `zone` int(11) unsigned DEFAULT NULL,
-  `damage_dealt` int(11) unsigned DEFAULT '0',
-  `damage_received` int(11) unsigned DEFAULT '0',
-  `crowd_controls` int(11) unsigned DEFAULT '0',
-  PRIMARY KEY (`guid`),
-  KEY `idx_unit` (`unit`),
-  KEY `idx_zone` (`zone`)
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `account` int(11) DEFAULT NULL,
+  `character` int(11) DEFAULT NULL,
+  `unit` int(11) DEFAULT NULL,
+  `zone` int(11) DEFAULT NULL,
+  `damage_dealt` bigint(20) DEFAULT NULL,
+  `damage_received` bigint(20) DEFAULT NULL,
+  `crowd_controls` int(11) DEFAULT NULL,
+  `kills` int(11) DEFAULT '0',
+  `deaths` int(11) DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_account_unit` (`account`,`unit`),
+  KEY `idx_account_zone` (`account`,`zone`),
+  KEY `idx_character_unit` (`character`,`unit`),
+  KEY `idx_character_zone` (`character`,`zone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=armscii8 COLLATE=armscii8_bin;
 
 -- Dumping data for table characters.levelcraft_unit_experience: ~0 rows (approximately)
