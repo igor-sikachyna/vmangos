@@ -771,6 +771,10 @@ void WorldSession::LogoutPlayer(bool Save)
         if (Save)
             _player->SaveToDB(false, removedFromMap);
 
+        // LevelCraft
+        if (Save)
+            _player->levelCraft.SaveToDB();
+
         // Leave all channels before player delete...
         _player->CleanupChannels();
 
@@ -806,9 +810,6 @@ void WorldSession::LogoutPlayer(bool Save)
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_7_1
         m_movementPacketCompressor.ClearBuffer();
 #endif
-
-        // LevelCraft
-        _player->levelCraft.SaveToDB();
 
         SetPlayer(nullptr);                                    // deleted in Remove/DeleteFromWorld call
 

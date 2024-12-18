@@ -1461,7 +1461,7 @@ class Unit : public SpellCaster
         /***                    LevelCraft                     ***/
         /*********************************************************/
 
-    private:
+    protected:
         LevelCraft levelCraft;
 
     protected:

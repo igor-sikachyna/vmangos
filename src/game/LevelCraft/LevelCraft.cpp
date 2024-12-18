@@ -6,8 +6,6 @@
 #include "WorldPacket.h"
 #include "Chat.h"
 
-const double XP_VARIANCE = 0.1;
-
 void Message(Unit* player, std::string s)
 {
     ChatHandler chat((Player*)player);
@@ -19,39 +17,130 @@ LevelCraft::LevelCraft(Unit* unit) : m_unit(unit)
 
 }
 
-void LevelCraft::SaveToDB()
+void LevelCraft::LoadFromDB()
 {
-    
+    // TBA
 }
 
-void LevelCraft::LoadCombatExperienceFromDB(uint32 id, bool isAccount, uint32 target, bool isZone, std::map<uint32, CombatExperienceInfo>& map)
+void LevelCraft::InsertOrUpdateCombatExperience(CombatExperienceInfo* info, uint32 id, CombatExperienceKeyType keyType, uint32 target, CombatExperienceTargetType targetType)
 {
-    // Load `levelcraft_unit_experience`
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "> Loading table `levelcraft_unit_experience` for %u(%u) %u(%u)", id, isAccount, target, isZone);
-    uint32 count = 0;
-    std::string condition = (isAccount ? "account=" : "character=") + std::to_string(id) + " and " + (isZone ? "zone=" : "unit=") + std::to_string(target);
+    try
+    {
+        bool pResult;
 
-    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT `damage_dealt`, `damage_received`, `crowd_controls`, `kills`, `deaths` FROM `levelcraft_unit_experience` WHERE " + condition));
-    if (!result)
-    {
-        // Initialize empty data
-        map[target] = CombatExperienceInfo();
-    }
-    else
-    {
-        int resultCount = (int)result->GetRowCount();
-        // Should have only one result
-        if (resultCount > 1)
+        if (info->dbEntryExists)
         {
-            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "> Table `levelcraft_unit_experience` contains a duplicate entry for %u(%u) %u(%u)", id, isAccount, target, isZone);
+            std::string statement = std::string("UPDATE `levelcraft_unit_experience` SET ") +
+                "`damage_dealt` = %u, " +
+                "`damage_received` = %u " +
+                "WHERE " +
+                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
+                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u ;";
+
+            pResult = CharacterDatabase.PExecute(statement.c_str(), info->damageDealt, info->damageReceived, id, target);
         }
-        else if (resultCount == 1)
+        else
         {
+            std::string statement = std::string("INSERT INTO `levelcraft_unit_experience` SET ") +
+                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
+                //(keyType == CombatExperienceKeyType::ACCOUNT ? "`character`" : "`account`") + "=NULL, " +
+                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u, " +
+                //(targetType == CombatExperienceTargetType::UNIT ? "`zone`" : "`unit`") + "=NULL, " +
+                "`damage_dealt` = %u, " +
+                "`damage_received` = %u ;";
+
+            pResult = CharacterDatabase.PExecute(statement.c_str(), id, target, info->damageDealt, info->damageReceived);
+
+            info->dbEntryExists = true;
+        }
+
+        if (!pResult)
+        {
+            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "> Failed to write to `levelcraft_unit_experience` for %u(%u) %u(%u)", id, keyType, target, targetType);
+        }
+    }
+    catch (std::runtime_error& err)
+    {
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "> Exception thrown during an SQL update in `levelcraft_unit_experience` for %u(%u) %u(%u) with %s", id, keyType, target, targetType, err.what());
+    }
+}
+
+void LevelCraft::SaveToDB()
+{
+    for (auto& m : m_modified)
+    {
+        // Save to DB
+        auto& q = m.second;
+        CombatExperienceInfo* characterInfo;
+        CombatExperienceInfo* accountInfo;
+        if (q.targetType == CombatExperienceTargetType::UNIT)
+        {
+            characterInfo = &m_unitCombatExperience[q.target];
+            accountInfo = &m_accountUnitCombatExperience[q.target];
+        }
+        else
+        {
+            characterInfo = &m_zoneCombatExperience[q.target];
+            accountInfo = &m_accountZoneCombatExperience[q.target];
+        }
+
+        Player* player = (Player*)m_unit;
+        InsertOrUpdateCombatExperience(characterInfo, player->GetGUIDLow(), CombatExperienceKeyType::CHARACTER, q.target, q.targetType);
+        InsertOrUpdateCombatExperience(accountInfo, player->GetSession()->GetAccountId(), CombatExperienceKeyType::ACCOUNT, q.target, q.targetType);
+    }
+
+    m_modified.clear();
+}
+
+void LevelCraft::LoadCombatExperienceFromDB(uint32 id, CombatExperienceKeyType keyType, uint32 target, CombatExperienceTargetType targetType, std::map<uint32, CombatExperienceInfo>& map)
+{
+    if (map.count(target) > 0)
+        return;
+
+    try
+    {
+        // Load `levelcraft_unit_experience`
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "> Loading table `levelcraft_unit_experience` for %u(%u) %u(%u)", id, keyType, target, targetType);
+        uint32 count = 0;
+        std::string condition = (keyType == CombatExperienceKeyType::ACCOUNT ? "`account` = " : "`character` = ") + std::to_string(id) + " and " + (targetType == CombatExperienceTargetType::ZONE ? "`zone` = " : "`unit` = ") + std::to_string(target);
+
+        std::unique_ptr<QueryResult> result(CharacterDatabase.Query("SELECT `damage_dealt`, `damage_received`, `crowd_controls`, `kills`, `deaths` FROM `levelcraft_unit_experience` WHERE " + condition));
+        if (!result || result->GetRowCount() == 0)
+        {
+            // Initialize empty data
+            map[target] = CombatExperienceInfo();
+            map[target].dbEntryExists = false;
+        }
+        else
+        {
+            // Should have only one result
+            if (result->GetRowCount() > 1)
+            {
+                sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "> Table `levelcraft_unit_experience` contains a duplicate entry for %u(%u) %u(%u)", id, keyType, target, targetType);
+            }
+
             Field* fields = result->Fetch();
             map[target].damageDealt = fields[0].GetUInt64();
-            map[target].damageReceived = fields[0].GetUInt64();
-            sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded LevelCraft combat experience for %u(%u) %u(%u)", id, isAccount, target, isZone);
+            map[target].damageReceived = fields[1].GetUInt64();
+            map[target].dbEntryExists = true;
+            sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded LevelCraft combat experience for %u(%u) %u(%u)", id, keyType, target, targetType);
         }
+    }
+    catch (std::runtime_error& err)
+    {
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "> Exception thrown during an SQL query in `levelcraft_unit_experience` for %u(%u) %u(%u) with %s", id, keyType, target, targetType, err.what());
+    }
+}
+
+void LevelCraft::AddModifiedEntry(uint32 target, CombatExperienceTargetType targetType)
+{
+    ModifiedEntryQueueElement m;
+    m.target = target;
+    m.targetType = targetType;
+    uint64 id = m.ToUint64();
+    if (m_modified.count(id) == 0)
+    {
+        m_modified[id] = m;
     }
 }
 
@@ -76,6 +165,8 @@ void PrintDebugInfo(Unit* player, Unit* creature) {
 }
 
 // LevelCraft TODO: Zone XP should be assigned to where the combat was initiated instead of the current location
+// LevelCraft TODO: Periodically save data to DB
+// LevelCraft TODO: Handle spell and pet damage
 
 void LevelCraft::HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInfo)
 {
@@ -89,15 +180,18 @@ void LevelCraft::HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInf
 
     // Ensure that the required data is loaded first if required
     Player* player = (Player*)m_unit;
-    LoadCombatExperienceFromDB(player->GetGUIDLow(), false, entry, false, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetGUIDLow(), false, zone, true, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), true, entry, false, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), true, zone, true, m_unitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetGUIDLow(), CombatExperienceKeyType::CHARACTER, entry, CombatExperienceTargetType::UNIT, m_unitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetGUIDLow(), CombatExperienceKeyType::CHARACTER, zone, CombatExperienceTargetType::ZONE, m_zoneCombatExperience);
+    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), CombatExperienceKeyType::ACCOUNT, entry, CombatExperienceTargetType::UNIT, m_accountUnitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), CombatExperienceKeyType::ACCOUNT, zone, CombatExperienceTargetType::ZONE, m_accountZoneCombatExperience);
 
     m_unitCombatExperience[entry].damageReceived += xpToAward;
     m_zoneCombatExperience[zone].damageReceived += xpToAward;
     m_accountUnitCombatExperience[entry].damageReceived += xpToAward;
     m_accountZoneCombatExperience[zone].damageReceived += xpToAward;
+
+    AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
+    AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
     auto stats = ((Creature*)pAttacker)->GetClassLevelStats();
     damageInfo->totalDamage /= (1.0 + double(m_unitCombatExperience[entry].damageReceived) / stats->health);
@@ -117,15 +211,18 @@ void LevelCraft::HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo)
 
     // Ensure that the required data is loaded first if required
     Player* player = (Player*)m_unit;
-    LoadCombatExperienceFromDB(player->GetGUIDLow(), false, entry, false, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetGUIDLow(), false, zone, true, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), true, entry, false, m_unitCombatExperience);
-    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), true, zone, true, m_unitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetGUIDLow(), CombatExperienceKeyType::CHARACTER, entry, CombatExperienceTargetType::UNIT, m_unitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetGUIDLow(), CombatExperienceKeyType::CHARACTER, zone, CombatExperienceTargetType::ZONE, m_zoneCombatExperience);
+    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), CombatExperienceKeyType::ACCOUNT, entry, CombatExperienceTargetType::UNIT, m_accountUnitCombatExperience);
+    LoadCombatExperienceFromDB(player->GetSession()->GetAccountId(), CombatExperienceKeyType::ACCOUNT, zone, CombatExperienceTargetType::ZONE, m_accountZoneCombatExperience);
 
     m_unitCombatExperience[entry].damageDealt += xpToAward;
     m_zoneCombatExperience[zone].damageDealt += xpToAward;
     m_accountUnitCombatExperience[entry].damageDealt += xpToAward;
     m_accountZoneCombatExperience[zone].damageDealt += xpToAward;
+
+    AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
+    AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
     auto stats = ((Creature*)pVictim)->GetClassLevelStats();
     damageInfo->totalDamage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
