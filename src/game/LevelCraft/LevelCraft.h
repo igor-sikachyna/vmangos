@@ -29,6 +29,8 @@ public:
 
     void HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInfo);
     void HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo);
+    void HandleKill(Unit* pVictim);
+    void HandleDeath(Unit* pAttacker);
 
 private:
 

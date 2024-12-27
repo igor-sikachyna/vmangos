@@ -33,23 +33,25 @@ void LevelCraft::InsertOrUpdateCombatExperience(CombatExperienceInfo* info, uint
             std::string statement = std::string("UPDATE `levelcraft_unit_experience` SET ") +
                 "`damage_dealt` = %u, " +
                 "`damage_received` = %u " +
+                "`kills` = %u " +
+                "`deaths` = %u " +
                 "WHERE " +
                 (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
                 (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u ;";
 
-            pResult = CharacterDatabase.PExecute(statement.c_str(), info->damageDealt, info->damageReceived, id, target);
+            pResult = CharacterDatabase.PExecute(statement.c_str(), info->damageDealt, info->damageReceived, info->kills, info->deaths, id, target);
         }
         else
         {
             std::string statement = std::string("INSERT INTO `levelcraft_unit_experience` SET ") +
-                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
-                //(keyType == CombatExperienceKeyType::ACCOUNT ? "`character`" : "`account`") + "=NULL, " +
-                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u, " +
-                //(targetType == CombatExperienceTargetType::UNIT ? "`zone`" : "`unit`") + "=NULL, " +
-                "`damage_dealt` = %u, " +
-                "`damage_received` = %u ;";
+                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u " +
+                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u " +
+                "`damage_dealt` = %u " +
+                "`damage_received` = %u " +
+                "`kills` = %u " +
+                "`deaths` = %u ;";
 
-            pResult = CharacterDatabase.PExecute(statement.c_str(), id, target, info->damageDealt, info->damageReceived);
+            pResult = CharacterDatabase.PExecute(statement.c_str(), id, target, info->damageDealt, info->damageReceived, info->kills, info->deaths);
 
             info->dbEntryExists = true;
         }
@@ -228,4 +230,44 @@ void LevelCraft::HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo)
     damageInfo->totalDamage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
 
     PrintDebugInfo(m_unit, pVictim);
+}
+
+void LevelCraft::HandleKill(Unit* pVictim)
+{
+    // Only trigger in PvE
+    if (!m_unit->IsPlayer() || !pVictim->IsCreature())
+        return;
+
+    uint32 entry = pVictim->GetEntry();
+    uint32 zone = pVictim->GetZoneId();
+
+    m_unitCombatExperience[entry].kills += 1;
+    m_zoneCombatExperience[zone].kills += 1;
+    m_accountUnitCombatExperience[entry].kills += 1;
+    m_accountZoneCombatExperience[zone].kills += 1;
+
+    AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
+    AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
+
+    PrintDebugInfo(m_unit, pVictim);
+}
+
+void LevelCraft::HandleDeath(Unit* pAttacker)
+{
+    // Only trigger in PvE
+    if (!m_unit->IsPlayer() || !pAttacker->IsCreature())
+        return;
+
+    uint32 entry = pAttacker->GetEntry();
+    uint32 zone = m_unit->GetZoneId();
+
+    m_unitCombatExperience[entry].deaths += 1;
+    m_zoneCombatExperience[zone].deaths += 1;
+    m_accountUnitCombatExperience[entry].deaths += 1;
+    m_accountZoneCombatExperience[zone].deaths += 1;
+
+    AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
+    AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
+
+    PrintDebugInfo(m_unit, pAttacker);
 }

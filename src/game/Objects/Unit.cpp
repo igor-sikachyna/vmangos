@@ -1150,6 +1150,12 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
     // Call AI OwnerKilledUnit (for any current summoned minipet/guardian/protector)
     PetOwnerKilledUnit(pVictim);
 
+    // LevelCraft
+    // Player is killing a creature
+    levelCraft.HandleKill(pVictim);
+    // Creature is killing a player
+    pVictim->levelCraft.HandleKill(this);
+
     // 10% durability loss on death
     // clean InHateListOf
     if (pPlayerVictim)
