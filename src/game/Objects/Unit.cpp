@@ -1154,7 +1154,7 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
     // Player is killing a creature
     levelCraft.HandleKill(pVictim);
     // Creature is killing a player
-    pVictim->levelCraft.HandleKill(this);
+    pVictim->levelCraft.HandleDeath(this);
 
     // 10% durability loss on death
     // clean InHateListOf

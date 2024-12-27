@@ -32,8 +32,8 @@ void LevelCraft::InsertOrUpdateCombatExperience(CombatExperienceInfo* info, uint
         {
             std::string statement = std::string("UPDATE `levelcraft_unit_experience` SET ") +
                 "`damage_dealt` = %u, " +
-                "`damage_received` = %u " +
-                "`kills` = %u " +
+                "`damage_received` = %u, " +
+                "`kills` = %u, " +
                 "`deaths` = %u " +
                 "WHERE " +
                 (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
@@ -44,11 +44,11 @@ void LevelCraft::InsertOrUpdateCombatExperience(CombatExperienceInfo* info, uint
         else
         {
             std::string statement = std::string("INSERT INTO `levelcraft_unit_experience` SET ") +
-                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u " +
-                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u " +
-                "`damage_dealt` = %u " +
-                "`damage_received` = %u " +
-                "`kills` = %u " +
+                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
+                (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u, " +
+                "`damage_dealt` = %u, " +
+                "`damage_received` = %u, " +
+                "`kills` = %u, " +
                 "`deaths` = %u ;";
 
             pResult = CharacterDatabase.PExecute(statement.c_str(), id, target, info->damageDealt, info->damageReceived, info->kills, info->deaths);
