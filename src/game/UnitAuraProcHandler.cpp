@@ -1752,6 +1752,11 @@ SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(Unit* pVictim, uint32 
     fdamage = SpellDamageBonusDone(pVictim, spellInfo, triggeredByAura->GetEffIndex(), fdamage, SPELL_DIRECT_DAMAGE);
     fdamage = pVictim->SpellDamageBonusTaken(this, spellInfo, triggeredByAura->GetEffIndex(), fdamage, SPELL_DIRECT_DAMAGE);
     damageInfo.damage = ditheru(fdamage);
+    // LevelCraft
+    // Player is attacking a creature
+    damageInfo.damage = levelCraft.HandleDamageDealt(pVictim, damageInfo.damage);
+    // Creature is attacking a player
+    damageInfo.damage = pVictim->levelCraft.HandleDamageReceived(this, damageInfo.damage);
     damageInfo.target->CalculateAbsorbResistBlock(this, &damageInfo, spellInfo);
     DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb);
     SendSpellNonMeleeDamageLog(&damageInfo);

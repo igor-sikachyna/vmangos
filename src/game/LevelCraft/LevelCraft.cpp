@@ -36,7 +36,7 @@ void LevelCraft::InsertOrUpdateCombatExperience(CombatExperienceInfo* info, uint
                 "`kills` = %u, " +
                 "`deaths` = %u " +
                 "WHERE " +
-                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u, " +
+                (keyType == CombatExperienceKeyType::ACCOUNT ? "`account`" : "`character`") + " = %u and " +
                 (targetType == CombatExperienceTargetType::UNIT ? "`unit`" : "`zone`") + " = %u ;";
 
             pResult = CharacterDatabase.PExecute(statement.c_str(), info->damageDealt, info->damageReceived, info->kills, info->deaths, id, target);
@@ -154,14 +154,15 @@ T addVariance(T val)
     return val * (1.0 + 2.0 * (rnd - 0.5) * variance);
 }
 
-void PrintDebugInfo(Unit* player, Unit* creature) {
+void PrintDebugInfo(std::string prefix, Unit* player, Unit* creature, uint32 value)
+{
     auto cinfo = ((Creature*)creature)->GetCreatureInfo();
     auto stats = ((Creature*)creature)->GetClassLevelStats();
 
     if (cinfo && stats)
     {
         char buf[1024];
-        sprintf(buf, "Zone: %d, Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d", creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth());
+        sprintf(buf, "%s Zone: %d, Entry: %d, Class: %d, Health multi: %f, Start health: %d, Max Health: %d, Value: %d", prefix.c_str(), creature->GetZoneId(), creature->GetEntry(), creature->GetClass(), cinfo->health_multiplier, stats->health, creature->GetMaxHealth(), value);
         Message(player, buf);
     }
 }
@@ -170,15 +171,15 @@ void PrintDebugInfo(Unit* player, Unit* creature) {
 // LevelCraft TODO: Periodically save data to DB
 // LevelCraft TODO: Handle spell and pet damage
 
-void LevelCraft::HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInfo)
+uint32 LevelCraft::HandleDamageReceived(Unit* pAttacker, uint32 damage)
 {
     // Only trigger in PvE
     if (!m_unit->IsPlayer() || !pAttacker->IsCreature())
-        return;
+        return damage;
 
     uint32 entry = pAttacker->GetEntry();
     uint32 zone = m_unit->GetZoneId();
-    uint64 xpToAward = addVariance(damageInfo->totalDamage);
+    uint64 xpToAward = addVariance(damage);
 
     // Ensure that the required data is loaded first if required
     Player* player = (Player*)m_unit;
@@ -196,20 +197,23 @@ void LevelCraft::HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInf
     AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
     auto stats = ((Creature*)pAttacker)->GetClassLevelStats();
-    damageInfo->totalDamage /= (1.0 + double(m_unitCombatExperience[entry].damageReceived) / stats->health);
 
-    PrintDebugInfo(m_unit, pAttacker);
+    PrintDebugInfo("Damage received", m_unit, pAttacker, damage);
+
+    damage /= (1.0 + double(m_unitCombatExperience[entry].damageReceived) / stats->health);
+
+    return damage;
 }
 
-void LevelCraft::HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo)
+uint32 LevelCraft::HandleDamageDealt(Unit* pVictim, uint32 damage)
 {
     // Only trigger in PvE
     if (!m_unit->IsPlayer() || !pVictim->IsCreature())
-        return;
+        return damage;
 
     uint32 entry = pVictim->GetEntry();
     uint32 zone = pVictim->GetZoneId();
-    uint64 xpToAward = addVariance(damageInfo->totalDamage);
+    uint64 xpToAward = addVariance(damage);
 
     // Ensure that the required data is loaded first if required
     Player* player = (Player*)m_unit;
@@ -227,9 +231,12 @@ void LevelCraft::HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo)
     AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
     auto stats = ((Creature*)pVictim)->GetClassLevelStats();
-    damageInfo->totalDamage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
 
-    PrintDebugInfo(m_unit, pVictim);
+    PrintDebugInfo("Damage dealt", m_unit, pVictim, damage);
+
+    damage *= (1.0 + double(m_unitCombatExperience[entry].damageDealt) / stats->health);
+
+    return damage;
 }
 
 void LevelCraft::HandleKill(Unit* pVictim)
@@ -249,7 +256,7 @@ void LevelCraft::HandleKill(Unit* pVictim)
     AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
     AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
-    PrintDebugInfo(m_unit, pVictim);
+    PrintDebugInfo("Player kill", m_unit, pVictim, m_unitCombatExperience[entry].kills);
 }
 
 void LevelCraft::HandleDeath(Unit* pAttacker)
@@ -269,5 +276,5 @@ void LevelCraft::HandleDeath(Unit* pAttacker)
     AddModifiedEntry(entry, CombatExperienceTargetType::UNIT);
     AddModifiedEntry(zone, CombatExperienceTargetType::ZONE);
 
-    PrintDebugInfo(m_unit, pAttacker);
+    PrintDebugInfo("Player death", m_unit, pAttacker, m_unitCombatExperience[entry].deaths);
 }

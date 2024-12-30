@@ -27,8 +27,8 @@ public:
     void LoadFromDB();
     void SaveToDB();
 
-    void HandleDamageReceived(Unit* pAttacker, CalcDamageInfo* damageInfo);
-    void HandleDamageDealt(Unit* pVictim, CalcDamageInfo* damageInfo);
+    uint32 HandleDamageReceived(Unit* pAttacker, uint32 damage);
+    uint32 HandleDamageDealt(Unit* pVictim, uint32 damage);
     void HandleKill(Unit* pVictim);
     void HandleDeath(Unit* pAttacker);
 

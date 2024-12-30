@@ -1623,6 +1623,14 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             pCaster->CalculateSpellDamage(&damageInfo, m_damage, m_spellInfo, damageEffectIndex, m_attackType, this, target->isCrit);
         }
 
+        // LevelCraft
+        if (pCaster->IsUnit())
+        {
+            // Player is attacking a creature
+            damageInfo.damage = pCaster->ToUnit()->levelCraft.HandleDamageDealt(damageInfo.target, damageInfo.damage);
+            // Creature is attacking a player
+            damageInfo.damage = damageInfo.target->levelCraft.HandleDamageReceived(pCaster->ToUnit(), damageInfo.damage);
+        }
         uint32 const originalDamage = damageInfo.damage;
 
         unitTarget->CalculateAbsorbResistBlock(pCaster, &damageInfo, m_spellInfo, BASE_ATTACK, this);

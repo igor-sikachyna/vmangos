@@ -1574,9 +1574,9 @@ void Unit::CalculateMeleeDamage(Unit* pVictim, uint32 damage, CalcDamageInfo* da
 
     // LevelCraft
     // Player is attacking a creature
-    levelCraft.HandleDamageDealt(pVictim, damageInfo);
+    damageInfo->totalDamage = levelCraft.HandleDamageDealt(pVictim, damageInfo->totalDamage);
     // Creature is attacking a player
-    pVictim->levelCraft.HandleDamageReceived(this, damageInfo);
+    damageInfo->totalDamage = pVictim->levelCraft.HandleDamageReceived(this, damageInfo->totalDamage);
 
     // No animation on victim in this case.
     if (!damageInfo->totalDamage && (damageInfo->HitInfo & (HITINFO_MISS | HITINFO_ABSORB)))
@@ -1742,6 +1742,12 @@ void Unit::TriggerDamageShields(Unit* pVictim)
 
             uint32 damage = ditheru(fdamage);
             pVictim->DealDamageMods(this, damage, nullptr);
+
+            // LevelCraft
+            // Player is attacking a creature
+            damage = levelCraft.HandleDamageDealt(pVictim, damage);
+            // Creature is attacking a player
+            damage = pVictim->levelCraft.HandleDamageReceived(this, damage);
 
             WorldPacket data(SMSG_SPELLDAMAGESHIELD, (8 + 8 + 4 + 4));
             data << pVictim->GetObjectGuid();

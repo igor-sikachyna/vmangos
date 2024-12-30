@@ -6142,6 +6142,13 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
             }
 
             uint32 pdamage = ditheru(std::max(fdamage, 0.f)); // prevent negative damage due to sickness
+
+            // LevelCraft
+            // Player is attacking a creature
+            pdamage = pCaster->levelCraft.HandleDamageDealt(target, pdamage);
+            // Creature is attacking a player
+            pdamage = target->levelCraft.HandleDamageReceived(pCaster, pdamage);
+
             uint32 const originalDamage = pdamage;
 
             target->CalculateDamageAbsorbAndResist(pCaster, spellProto->GetSpellSchoolMask(), DOT, pdamage, &absorb, &resist, spellProto);
@@ -6247,6 +6254,8 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
             cleanDamage.resist = resist;
 
             pCaster->ProcDamageAndSpell(ProcSystemArguments(target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, originalDamage, BASE_ATTACK, spellProto));
+            // LevelCraft
+            // No adjustments required for health funnel
             int32 new_damage = pCaster->DealDamage(target, pdamage, &cleanDamage, DOT, spellProto->GetSpellSchoolMask(), spellProto, false, nullptr, GetHolder()->IsReflected());
 
             if (!target->IsAlive() && pCaster->IsNonMeleeSpellCasted(false))
@@ -6577,6 +6586,12 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
 
             bool isCrit = pCaster->IsSpellCrit(damageInfo.target, spellProto, GetSchoolMask(damageInfo.school), BASE_ATTACK);
             pCaster->CalculateSpellDamage(&damageInfo, gain, spellProto, GetEffIndex(), BASE_ATTACK, nullptr, isCrit);
+
+            // LevelCraft
+            // Player is attacking a creature
+            damageInfo.damage = pCaster->levelCraft.HandleDamageDealt(damageInfo.target, damageInfo.damage);
+            // Creature is attacking a player
+            damageInfo.damage = damageInfo.target->levelCraft.HandleDamageReceived(pCaster, damageInfo.damage);
 
             uint32 const originalDamage = damageInfo.damage;
 
